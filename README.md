@@ -13,7 +13,7 @@
 
 ---
 ## 整体架构图:
-![cmd-markdown-logo](https://www.zybuluo.com/static/img/logo.png)
+![cmd-markdown-logo](https://github.com/feiyu563/ansible-kubernetes/blob/master/images/jgt.png)
 
 主机配置：
 ```
@@ -83,7 +83,7 @@ yum install -y sshpass ansible
 ```
 ansible-playbook /etc/ansible/roles/installall.yaml
 ```
--[x] 等待执行完成后查看node节点是否都一键上线
+- [x] 等待执行完成后查看node节点是否都一键上线
 ```
 kubectl get nodes
 ```
