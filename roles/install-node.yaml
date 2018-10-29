@@ -1,0 +1,12 @@
+---
+- hosts: node
+  gather_facts: no
+  roles:
+  - { role: update-kernel }
+  - { role: init }
+  - { role: docker }
+  - { role: kubernetes-node }
+- hosts: master
+  gather_facts: no
+  roles:
+  - { role: approve }

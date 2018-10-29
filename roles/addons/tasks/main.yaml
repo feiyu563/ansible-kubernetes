@@ -1,0 +1,27 @@
+---
+- name: copy calico.yaml
+  template: src=calico.yaml.j2  dest=/etc/ansible/roles/addons/files/calico/calico.yaml  mode=777
+  
+- name: 生成环境变量1
+  shell: cat /etc/etcd/ssl/etcd.pem | base64 | tr -d '\n'
+  register: cert
+  
+- name: 生成环境变量2
+  shell: cat /etc/etcd/ssl/etcd-key.pem | base64 | tr -d '\n'
+  register: key
+  
+- name: 生成环境变量3
+  shell: cat /etc/etcd/ssl/etcd-root-ca.pem | base64 | tr -d '\n'
+  register: ca
+
+- name: 替换cert证书配置
+  lineinfile: dest=/etc/ansible/roles/addons/files/calico/calico.yaml  regexp='^etcd-cert:' line='etcd-cert: {{cert}}'
+
+- name: 替换key证书配置
+  lineinfile: dest=/etc/ansible/roles/addons/files/calico/calico.yaml  regexp='^etcd-key:' line='etcd-key: {{key}}'
+  
+- name: 替换ca证书配置
+  lineinfile: dest=/etc/ansible/roles/addons/files/calico/calico.yaml  regexp='^etcd-ca:' line='etcd-ca: {{ca}}'
+  
+- name: 启动calico
+  shell: kubectl create -f /etc/ansible/roles/addons/files/calico/

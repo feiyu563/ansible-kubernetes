@@ -1,0 +1,15 @@
+---
+- name: 确定之前是否已经下载对应版本文件
+  command: ls /etc/ansible/roles/downfiles/files/kubernetes-{{kubernetesversion}}-server-linux-amd64.tar.gz
+  register: result
+  ignore_errors: True
+  
+- name: 下载 kubernetes 二进制文件
+  #shell: wget https://dl.k8s.io/v1.11.3/kubernetes-server-linux-amd64.tar.gz 
+  get_url: dest=/etc/ansible/roles/downfiles/files/kubernetes-{{kubernetesversion}}-server-linux-amd64.tar.gz force=yes url=https://dl.k8s.io/{{kubernetesversion}}/kubernetes-server-linux-amd64.tar.gz 
+  when: result is failed
+  
+- name: 解压压缩包
+  #shell: tar -zxvf /etc/ansible/roles/downfiles/files/kubernetes-{{kubernetesversion}}-server-linux-amd64.tar.gz -C /etc/ansible/roles/downfiles/files
+  unarchive: src=/etc/ansible/roles/downfiles/files/kubernetes-{{kubernetesversion}}-server-linux-amd64.tar.gz dest=/etc/ansible/roles/downfiles/files
+  when: result is success

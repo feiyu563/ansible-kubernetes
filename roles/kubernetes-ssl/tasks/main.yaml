@@ -1,0 +1,58 @@
+---
+- name: copy kubernetes-csr
+  template: src=kubernetes-csr.j2  dest=/etc/ansible/roles/kubernetes-ssl/files/json/kubernetes-csr.json  mode=777
+  
+- name: 生成证书1
+  shell: cfssl gencert --initca=true /etc/ansible/roles/kubernetes-ssl/files/json/k8s-root-ca-csr.json | cfssljson --bare /etc/ansible/roles/kubernetes-ssl/files/k8s-root-ca
+  
+- name: 生成证书2
+  shell: cfssl gencert --ca /etc/ansible/roles/kubernetes-ssl/files/k8s-root-ca.pem --ca-key /etc/ansible/roles/kubernetes-ssl/files/k8s-root-ca-key.pem --config /etc/ansible/roles/kubernetes-ssl/files/json/k8s-gencert.json --profile kubernetes /etc/ansible/roles/kubernetes-ssl/files/json/{{item}}-csr.json | cfssljson --bare /etc/ansible/roles/kubernetes-ssl/files/{{item}}
+  with_items:
+        - kubernetes
+        - admin
+        - kube-proxy
+
+- name: 生成证书3
+  shell: cfssl gencert --initca=true /etc/ansible/roles/kubernetes-ssl/files/json/front-proxy-ca-csr.json | cfssljson --bare /etc/ansible/roles/kubernetes-ssl/files/front-proxy-ca
+    
+- name: 生成证书4
+  shell: cfssl gencert --ca /etc/ansible/roles/kubernetes-ssl/files/front-proxy-ca.pem --ca-key /etc/ansible/roles/kubernetes-ssl/files/front-proxy-ca-key.pem --config /etc/ansible/roles/kubernetes-ssl/files/json/k8s-gencert.json --profile kubernetes /etc/ansible/roles/kubernetes-ssl/files/json/front-proxy-client-csr.json | cfssljson --bare /etc/ansible/roles/kubernetes-ssl/files/front-proxy-client
+  
+- name: 安装master二进制文件
+  copy: src=/etc/ansible/roles/downfiles/files/kubernetes/server/bin/kubectl  dest=/usr/bin  mode=755
+  
+- name: Create kubelet bootstrapping kubeconfig...1
+  shell: kubectl config set-cluster kubernetes --certificate-authority=/etc/ansible/roles/kubernetes-ssl/files/k8s-root-ca.pem --embed-certs=true --server=https://127.0.0.1:6443 --kubeconfig=/etc/ansible/roles/kubernetes-ssl/files/bootstrap.kubeconfig
+
+- name: Create kubelet bootstrapping kubeconfig...2
+  shell: kubectl config set-credentials kubelet-bootstrap --token={{ bootstraptoken }} --kubeconfig=/etc/ansible/roles/kubernetes-ssl/files/bootstrap.kubeconfig
+  
+- name: Create kubelet bootstrapping kubeconfig...3
+  shell: kubectl config set-context default --cluster=kubernetes --user=kubelet-bootstrap --kubeconfig=/etc/ansible/roles/kubernetes-ssl/files/bootstrap.kubeconfig
+  
+- name: Create kubelet bootstrapping kubeconfig...4
+  shell: kubectl config use-context default --kubeconfig=/etc/ansible/roles/kubernetes-ssl/files/bootstrap.kubeconfig
+  
+- name: Create kube-proxy kubeconfig...1
+  shell: kubectl config set-cluster kubernetes --certificate-authority=/etc/ansible/roles/kubernetes-ssl/files/k8s-root-ca.pem --embed-certs=true --server=https://127.0.0.1:6443 --kubeconfig=/etc/ansible/roles/kubernetes-ssl/files/kube-proxy.kubeconfig
+
+- name: Create kube-proxy kubeconfig...2
+  shell: kubectl config set-credentials kube-proxy --client-certificate=/etc/ansible/roles/kubernetes-ssl/files/kube-proxy.pem --client-key=/etc/ansible/roles/kubernetes-ssl/files/kube-proxy-key.pem --embed-certs=true --kubeconfig=/etc/ansible/roles/kubernetes-ssl/files/kube-proxy.kubeconfig
+  
+- name: Create kube-proxy kubeconfig...3
+  shell: kubectl config set-context default --cluster=kubernetes --user=kube-proxy --kubeconfig=/etc/ansible/roles/kubernetes-ssl/files/kube-proxy.kubeconfig
+  
+- name: Create kube-proxy kubeconfig...4
+  shell: kubectl config use-context default --kubeconfig=/etc/ansible/roles/kubernetes-ssl/files/kube-proxy.kubeconfig
+
+- name: kubectl 配置创建中...1
+  shell: kubectl config set-cluster kubernetes --certificate-authority=/etc/ansible/roles/kubernetes-ssl/files/k8s-root-ca.pem --embed-certs=true --server=https://{{ groups['master'][0] }}:6443
+  
+- name: kubectl 配置创建中...2
+  shell: kubectl config set-credentials admin --client-certificate=/etc/ansible/roles/kubernetes-ssl/files/admin.pem --embed-certs=true --client-key=/etc/ansible/roles/kubernetes-ssl/files/admin-key.pem
+  
+- name: kubectl 配置创建中...3
+  shell: kubectl config set-context kubernetes --cluster=kubernetes --user=admin
+  
+- name: kubectl 配置创建中...4
+  shell: kubectl config use-context kubernetes

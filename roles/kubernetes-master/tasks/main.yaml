@@ -1,0 +1,112 @@
+---
+- name: 安装Etcd
+  shell: yum install etcd -y
+        
+- name: 初始化Etcd配置
+  shell: mkdir -p /var/lib/etcd/ && mkdir -p /etc/etcd/ssl && rm -rf /var/lib/etcd/*
+
+- name: 复制Etcd配置文件
+  template: src=etcd.j2  dest=/etc/etcd/etcd.conf  mode=755
+
+- name: 复制Etcd证书
+  copy: src=/etc/ansible/roles/etcd-ssl/files/{{item}}  dest=/etc/etcd/ssl  mode=644
+  with_items:
+        - etcd-key.pem
+        - etcd-root-ca-key.pem
+        - etcd-root-ca.pem
+        - etcd.pem
+        
+- name: 设置Etcd自启动
+  service: name=etcd  state=started enabled=yes  daemon_reload=yes
+
+- name: 安装master二进制文件
+  copy: src=/etc/ansible/roles/downfiles/files/kubernetes/server/bin/{{item}}  dest=/usr/bin  mode=755
+  with_items:
+        - hyperkube
+        - kube-apiserver
+        - kube-scheduler
+        - kubelet
+        - kube-controller-manager
+        - kubectl
+        - kube-proxy
+  
+- name: 建立kubernetes和kubelet目录
+  shell: mkdir -p /var/lib/kubelet && mkdir -p /etc/kubernetes
+  
+- name: 分发kubelet配置文件...
+  template: src=kubelet.j2  dest=/etc/kubernetes/kubelet  mode=644
+  
+- name: 分发proxy配置文件...
+  template: src=proxy.j2  dest=/etc/kubernetes/proxy  mode=644
+  
+- name: 分发apiserver配置文件...
+  template: src=apiserver.j2  dest=/etc/kubernetes/apiserver  mode=644
+  
+- name: 分发其他配置文件...
+  copy: src=conf/  dest=/etc/kubernetes  mode=644
+  
+- name: 分发启动配置文件...
+  copy: src=systemd/  dest=/usr/lib/systemd/system  mode=644
+
+- name: 创建证书目录
+  shell: mkdir -p /etc/kubernetes/ssl 
+  
+- name: 开始分发kubernetes配置..分发证书
+  copy: src=/etc/ansible/roles/kubernetes-ssl/files/{{item}}  dest=/etc/kubernetes/ssl  mode=644
+  with_items:
+        - admin.pem
+        - admin-key.pem
+        - k8s-root-ca.pem
+        - k8s-root-ca-key.pem
+        - kube-proxy.pem
+        - kube-proxy-key.pem
+        - kubernetes.pem
+        - kubernetes-key.pem
+        - front-proxy-ca.pem
+        - front-proxy-ca-key.pem
+        - front-proxy-client-key.pem
+        - front-proxy-client.pem
+  
+- name: 开始分发kubernetes配置..分发audit-policy
+  copy: src=audit-policy.yaml  dest=/etc/kubernetes  mode=644
+  
+- name: 开始分发kubernetes配置..分发token
+  template: src=token.j2  dest=/etc/kubernetes/token.csv  mode=644
+  
+- name: 开始分发kubernetes配置..分发kubeconfig
+  copy: src=/etc/ansible/roles/kubernetes-ssl/files/{{item}}  dest=/etc/kubernetes  mode=600
+  with_items:
+        - bootstrap.kubeconfig
+        - kube-proxy.kubeconfig
+
+- name: kubectl 配置创建中...1
+  shell: kubectl config set-cluster kubernetes --certificate-authority=/etc/kubernetes/ssl/k8s-root-ca.pem --embed-certs=true --server=https://{{ inventory_hostname }}:6443
+  
+- name: kubectl 配置创建中...2
+  shell: kubectl config set-credentials admin --client-certificate=/etc/kubernetes/ssl/admin.pem --embed-certs=true --client-key=/etc/kubernetes/ssl/admin-key.pem
+  
+- name: kubectl 配置创建中...3
+  shell: kubectl config set-context kubernetes --cluster=kubernetes --user=admin
+  
+- name: kubectl 配置创建中...4
+  shell: kubectl config use-context kubernetes
+
+- name: 启动kubernetes 服务
+  service: name={{item}}  state=restarted enabled=yes  daemon_reload=yes
+  with_items:
+        - kube-apiserver
+        - kube-controller-manager
+        - kube-scheduler
+        
+- name: 安装kubectl命令补全
+  shell: yum install -y bash-completion  && kubectl completion bash > /etc/bash_completion.d/kubectl && echo "source <(kubectl completion bash)" >> /root/.bashrc
+
+- name: 生成kubelet-bootstrap
+  shell: kubectl create clusterrolebinding kubelet-bootstrap --clusterrole=system:node-bootstrapper --user=kubelet-bootstrap
+  ignore_errors: true
+  
+- name: 启动kubelet 服务
+  service: name={{item}}  state=restarted enabled=yes  daemon_reload=yes
+  with_items:
+        - kubelet
+        - kube-proxy

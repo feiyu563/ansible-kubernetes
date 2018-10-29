@@ -1,0 +1,34 @@
+---
+- hosts: local
+  gather_facts: no
+  roles:
+  - { role: init }
+  - { role: downfiles }
+  - { role: etcd-ssl }
+  - { role: kubernetes-ssl }
+- hosts: master
+  gather_facts: no
+  roles:
+  - { role: update-kernel }
+  - { role: init }
+  - { role: docker }
+  - { role: kubernetes-master }
+- hosts: node
+  gather_facts: no
+  roles:
+  - { role: update-kernel }
+  - { role: init }
+  - { role: docker }
+  - { role: kubernetes-node }
+- hosts: master
+  gather_facts: no
+  roles:
+  - { role: approve }
+- hosts: local
+  gather_facts: no
+  roles:
+  - { role: addons }
+- hosts: all
+  gather_facts: no
+  roles:
+  - { role: cni }

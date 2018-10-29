@@ -1,0 +1,18 @@
+---
+- name: 上传docker-selinux
+  copy: src=docker-ce-selinux-17.03.2.ce-1.el7.centos.noarch.rpm dest=/root/docker-ce-selinux-17.03.2.ce-1.el7.centos.noarch.rpm
+
+- name: 上传docker
+  copy: src=docker-ce-17.03.2.ce-1.el7.centos.x86_64.rpm  dest=/root/docker-ce-17.03.2.ce-1.el7.centos.x86_64.rpm
+
+- name: 安装docker
+  shell: yum localinstall -y docker-ce-selinux-17.03.2.ce-1.el7.centos.noarch.rpm --nogpgcheck && yum localinstall -y docker-ce-17.03.2.ce-1.el7.centos.x86_64.rpm --nogpgcheck
+
+- name: 设置docker /usr/lib/systemd/system/docker.service
+  lineinfile: dest=/usr/lib/systemd/system/docker.service  insertbefore='^ExecStart=' line='ExecStartPost=/sbin/iptables -I FORWARD -s 0.0.0.0/0 -d 0.0.0.0/0 -j ACCEPT'
+
+- name: 设置docker存储驱动
+  lineinfile: dest=/usr/lib/systemd/system/docker.service  regexp='^ExecStart=' line='ExecStart=/usr/bin/dockerd  --storage-driver=overlay2'
+
+- name:  设置docker自启动
+  service: name=docker state=started enabled=yes  daemon_reload=yes

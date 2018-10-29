@@ -1,0 +1,37 @@
+---
+- name: 关闭防火墙
+  service: name=firewalld state=stopped enabled=no
+  ignore_errors: true
+
+- name: 关闭selinux
+  shell: sed -i "s/^SELINUX=enforcing/SELINUX=disabled/g" /etc/sysconfig/selinux && setenforce 0 && sed -i "s/^SELINUX=enforcing/SELINUX=disabled/g" /etc/selinux/config   && sed -i "s/^SELINUX=permissive/SELINUX=disabled/g" /etc/sysconfig/selinux  && sed -i "s/^SELINUX=permissive/SELINUX=disabled/g" /etc/selinux/config   && setenforce  0 
+  ignore_errors: true
+
+- name: 导入公钥
+  shell: rpm --import https://www.elrepo.org/RPM-GPG-KEY-elrepo.org
+  when: updatekernel == 'true'
+
+- name: 安装kernel源
+  shell: rpm -Uvh http://www.elrepo.org/elrepo-release-7.0-3.el7.elrepo.noarch.rpm
+  when: updatekernel == 'true'
+
+- name: 安装kernel
+  shell: yum --disablerepo=\* --enablerepo=elrepo-kernel install -y kernel-ml.x86_64
+  when: updatekernel == 'true'
+
+- name: 设置默认启动项
+  shell: grub2-set-default 0 && grub2-mkconfig -o /etc/grub2.cfg
+  when: updatekernel == 'true'
+
+- name: 重启系统
+  shell: sleep 2 && shutdown -r now "Ansible updates kernel"
+  async: 1
+  poll: 0
+  become: true
+  ignore_errors: true
+
+- name: 等待王者归来 ~_~ !
+  local_action: wait_for host="{{ inventory_hostname }}" delay=15 state=started port=22 connect_timeout=10 timeout=300
+
+- name: 不要着急,再等5秒钟 !
+  shell: sleep 5

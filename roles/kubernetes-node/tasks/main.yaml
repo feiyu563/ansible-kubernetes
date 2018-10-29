@@ -1,0 +1,82 @@
+---
+- name: 建立kubernetes kubelet和代理目录
+  shell: mkdir -p /etc/nginx && mkdir -p /var/lib/kubelet && mkdir -p /etc/kubernetes
+
+- name: 安装node
+  copy: src=/etc/ansible/roles/downfiles/files/kubernetes/server/bin/{{item}}  dest=/usr/bin  mode=755
+  with_items:
+        - hyperkube
+        - kubelet
+        - kube-proxy
+        
+- name: 开始分发代理配置
+  template: src=nginx.j2  dest=/etc/nginx/nginx.conf  mode=644
+  
+- name: 启动代理软件
+  shell: docker run -it -d -p 127.0.0.1:6443:6443 -v /etc/nginx:/etc/nginx  --name nginx-proxy --net=host --restart=on-failure:5 --memory=512M  nginx:1.13.5-alpine
+  
+- name: 设置代理自动启动
+  copy: src=nginx-proxy.service  dest=/etc/systemd/system  mode=644
+  
+- name: 启动代理服务
+  service: name=nginx-proxy  state=restarted enabled=yes  daemon_reload=yes
+  
+- name: 配置Etcd证书目录
+  shell: mkdir -p /etc/etcd/ssl
+  
+- name: 复制Etcd证书
+  copy: src=/etc/ansible/roles/etcd-ssl/files/{{item}}  dest=/etc/etcd/ssl  mode=644
+  with_items:
+        - etcd-key.pem
+        - etcd-root-ca-key.pem
+        - etcd-root-ca.pem
+        - etcd.pem
+  
+- name: 开始分发kubernetes配置..创建目录
+  shell: mkdir -p /etc/kubernetes/ssl 
+  
+- name: 开始分发kubernetes配置..分发证书
+  copy: src=/etc/ansible/roles/kubernetes-ssl/files/{{item}}  dest=/etc/kubernetes/ssl  mode=644
+  with_items:
+        - admin.pem
+        - admin-key.pem
+        - k8s-root-ca.pem
+        - k8s-root-ca-key.pem
+        - kube-proxy.pem
+        - kube-proxy-key.pem
+        - kubernetes.pem
+        - kubernetes-key.pem
+        - front-proxy-ca.pem
+        - front-proxy-ca-key.pem
+        - front-proxy-client-key.pem
+        - front-proxy-client.pem
+  
+- name: 开始分发kubernetes配置..分发kubeconfig
+  copy: src=/etc/ansible/roles/kubernetes-ssl/files/{{item}}  dest=/etc/kubernetes  mode=600
+  with_items:
+        - bootstrap.kubeconfig
+        - kube-proxy.kubeconfig
+  
+- name: 开始分发kubernetes配置..分发audit-policy
+  copy: src=audit-policy.yaml  dest=/etc/kubernetes  mode=644
+  
+- name: 开始分发kubernetes配置..分发token
+  template: src=token.j2  dest=/etc/kubernetes/token.csv  mode=644
+  
+- name: 复制config文件
+  copy: src=conf/config  dest=/etc/kubernetes  mode=644
+  
+- name: 分发kubelet配置文件...
+  template: src=kubelet.j2  dest=/etc/kubernetes/kubelet  mode=644
+  
+- name: 分发proxy配置文件...
+  template: src=proxy.j2  dest=/etc/kubernetes/proxy  mode=644
+  
+- name: 分发启动配置文件...
+  copy: src=systemd/  dest=/usr/lib/systemd/system  mode=644
+
+- name: 启动kubernetes {{item}}服务
+  service: name={{item}}  state=restarted enabled=yes  daemon_reload=yes
+  with_items:
+        - kubelet
+        - kube-proxy

@@ -1,0 +1,16 @@
+---
+- name: 复制证书生成软件
+  copy: src=bin/{{ item }}  dest=/usr/bin  mode=777
+  with_items:
+        - cfssl
+        - cfssl-certinfo
+        - cfssljson
+        
+- name: copy etcd-csr
+  template: src=etcd-csr.j2  dest=/etc/ansible/roles/etcd-ssl/files/json/etcd-csr.json  mode=777
+  
+- name: 生成证书
+  shell: cfssl gencert --initca=true /etc/ansible/roles/etcd-ssl/files/json/etcd-root-ca-csr.json | cfssljson --bare /etc/ansible/roles/etcd-ssl/files/etcd-root-ca
+  
+- name: 创建根CA
+  shell: cfssl gencert --ca /etc/ansible/roles/etcd-ssl/files/etcd-root-ca.pem --ca-key /etc/ansible/roles/etcd-ssl/files/etcd-root-ca-key.pem --config /etc/ansible/roles/etcd-ssl/files/json/etcd-gencert.json -profile=etcd /etc/ansible/roles/etcd-ssl/files/json/etcd-csr.json | cfssljson --bare /etc/ansible/roles/etcd-ssl/files/etcd

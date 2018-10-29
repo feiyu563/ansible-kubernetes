@@ -1,0 +1,24 @@
+error_log stderr notice;
+
+worker_processes auto;
+events {
+  multi_accept on;
+  use epoll;
+  worker_connections 1024;
+}
+
+stream {
+    upstream kube_apiserver {
+        least_conn;
+        server {{ groups['master'][0] }}:6443 weight=20 max_fails=1 fail_timeout=10s;
+        server {{ groups['master'][1] }}:6443 weight=20 max_fails=1 fail_timeout=10s;
+        server {{ groups['master'][2] }}:6443 weight=20 max_fails=1 fail_timeout=10s;
+    }
+
+    server {
+        listen        0.0.0.0:6443;
+        proxy_pass    kube_apiserver;
+        proxy_timeout 10m;
+        proxy_connect_timeout 1s;
+    }
+}

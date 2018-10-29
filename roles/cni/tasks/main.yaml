@@ -1,0 +1,6 @@
+---
+- name: 设置docker存储驱动
+  lineinfile: dest=/etc/kubernetes/kubelet  insertbefore='cluster-dns' line='              --network-plugin=cni \'
+  
+- name: 重新启动kubelet 服务
+  service: name=kubelet  state=restarted enabled=yes  daemon_reload=yes

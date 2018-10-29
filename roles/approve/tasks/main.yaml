@@ -1,0 +1,7 @@
+---
+- name: 等待5秒
+  shell: sleep 5
+  
+- name: 批准node接入请求
+  shell: kubectl get csr | grep Pending | awk '{print $1}' | xargs kubectl certificate approve
+  ignore_errors: true

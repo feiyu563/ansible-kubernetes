@@ -1,0 +1,8 @@
+---
+- hosts: local
+  gather_facts: no
+  roles:
+  - { role: init }
+  - { role: downfiles }
+  - { role: etcd-ssl }
+  - { role: kubernetes-ssl }

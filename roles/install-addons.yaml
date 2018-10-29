@@ -1,0 +1,9 @@
+---
+- hosts: local
+  gather_facts: no
+  roles:
+  - { role: addons }
+- hosts: all
+  gather_facts: no
+  roles:
+  - { role: cni }
