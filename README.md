@@ -1,5 +1,7 @@
 # 欢迎使用 kubernetes ansible一键部署集群工具
 
+<img src="https://avatars1.githubusercontent.com/u/1507452?s=200&v=4" width="100"><img src="https://github.com/kubernetes/kubernetes/raw/master/logo/logo.png" width="100">
+
 ------
 
   该版本可直接用于生产环境的部署,我们现在的生产环境均是采用这套配置.所有的安装直接基于官方的二进制文件,采用裸金属的方式部署(非容器),详细配置如下：
