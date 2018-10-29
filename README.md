@@ -1,6 +1,7 @@
 # 欢迎使用 kubernetes ansible一键部署集群工具
 
-<img src="https://avatars1.githubusercontent.com/u/1507452?s=200&v=4" width="100"><i class="icon-chevron-sign-right"></i>
+<img src="https://avatars1.githubusercontent.com/u/1507452?s=200&v=4" width="100">
+<i class="icon-chevron-sign-left"></i>
 <img src="https://github.com/kubernetes/kubernetes/raw/master/logo/logo.png" width="100">
 
 ------
